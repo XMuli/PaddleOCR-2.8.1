@@ -219,6 +219,12 @@ AUX_SOURCE_DIRECTORY(./src SRCS)
 add_executable(${DEMO_NAME} ${SRCS})
 target_link_libraries(${DEMO_NAME} ${DEPS})
 
+
+# 生成 dll 动态库
+set(BUILD_SHARED_LIBS ON)
+add_library(myocr SHARED ${SRCS})
+target_link_libraries(myocr ${DEPS})
+
 if (WIN32 AND WITH_MKL)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PADDLE_LIB}/third_party/install/mklml/lib/mklml.dll ./mklml.dll
