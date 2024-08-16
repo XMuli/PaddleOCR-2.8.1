@@ -60,16 +60,22 @@ extern "C" {
         }
 
 
-
-
         OCRResult* result = new OCRResult;
         result->num_images = ocr_results.size();
-        std::cout << "-------------DLL---------->" << result->num_images << "  " << img_names.size();
+        std::cout << "-------------DLL---------->" << result->num_images << "  " << img_names.size() << std::endl;
         result->boxes.resize(result->num_images);
+        result->path.resize(result->num_images);
         result->text_results.resize(result->num_images);
         result->rec_scores.resize(result->num_images);
         result->cls_labels.resize(result->num_images);
         result->cls_scores.resize(result->num_images);
+
+        result->path = img_names; // 文件名
+
+        for (int i = 0; i < result->path.size(); ++i)
+        {
+            std::cout << "result->path: " << result->path[i] << std::endl;
+        }
 
         for (size_t i = 0; i < ocr_results.size(); ++i)
         {
@@ -79,11 +85,12 @@ extern "C" {
             result->cls_labels[i].resize(ocr_results[i].size());
             result->cls_scores[i].resize(ocr_results[i].size());
 
+
             for (size_t j = 0; j < ocr_results[i].size(); ++j)
             {
                 result->boxes[i][j].resize(ocr_results[i][j].box.size());
                 result->boxes[i][j] = ocr_results[i][j].box;
-
+                
 
                 result->text_results[i][j] = ocr_results[i][j].text;
                 result->rec_scores[i][j] = ocr_results[i][j].score;
@@ -110,7 +117,7 @@ extern "C" {
 
 
         for (int i = 0; i < result->num_images; ++i) {
-            std::cout << "Image " << i << " OCR Results:" << std::endl;
+            std::cout << "Image " << i << "  result->path: " << result->path[i] << " OCR Results:" << std::endl;
 
             // 打印识别的文本结果和对应的识别分数
             for (size_t j = 0; j < result->text_results[i].size(); ++j) {
@@ -118,6 +125,7 @@ extern "C" {
                 std::cout << "\tRecognition Score: " << result->rec_scores[i][j] << std::endl;
             }
         }
+
         for (int i = 0; i < result->num_images; ++i)
         {
             std::cout << "Image " << i << " OCR Results:\n";

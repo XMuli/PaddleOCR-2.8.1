@@ -14,6 +14,7 @@ struct OCRResult
     std::vector<std::vector<float>> rec_scores; // Recognition scores
     std::vector<std::vector<int>> cls_labels; // Classification labels
     std::vector<std::vector<float>> cls_scores; // Classification scores
+    std::vector<std::string> path;
     int num_images;
 };
 
