@@ -43,8 +43,7 @@ extern "C" {
             cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
             if (!img.data)
             {
-                std::cerr << "[ERROR] image read failed! image path: "
-                    << cv_all_img_names[i] << std::endl;
+                std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
                 continue;
             }
             img_list.push_back(img);
@@ -53,29 +52,24 @@ extern "C" {
 
         std::vector<std::vector<OCRPredictResult>> ocr_results = ocr.ocr(img_list, true, true, false);
 
-        for (int i = 0; i < img_names.size(); ++i)
-        {
-            std::cout << "Predict img: " << img_names[i] << std::endl;
-            Utility::print_result(ocr_results[i]);
-        }
-
+        //for (int i = 0; i < img_names.size(); ++i)
+        //{
+        //    std::cout << "Predict img: " << img_names[i] << std::endl;
+        //    Utility::print_result(ocr_results[i]);
+        //}
 
         OCRResult* result = new OCRResult;
         result->num_images = ocr_results.size();
-        std::cout << "-------------DLL---------->" << result->num_images << "  " << img_names.size() << std::endl;
+        
         result->boxes.resize(result->num_images);
         result->path.resize(result->num_images);
         result->text_results.resize(result->num_images);
         result->rec_scores.resize(result->num_images);
         result->cls_labels.resize(result->num_images);
         result->cls_scores.resize(result->num_images);
+        result->path = img_names;
 
-        result->path = img_names; // 文件名
 
-        for (int i = 0; i < result->path.size(); ++i)
-        {
-            std::cout << "result->path: " << result->path[i] << std::endl;
-        }
 
         for (size_t i = 0; i < ocr_results.size(); ++i)
         {
@@ -99,23 +93,20 @@ extern "C" {
             }
         }
 
+        std::cout << "-------------DLL---------->" << std::endl
+        << "result: " << result  << "  result->num_images: " << result->num_images << "  img_names.size():" << img_names.size() << std::endl;
+        for (int i = 0; i < result->path.size(); ++i) std::cout << "result->path: " << result->path[i] << std::endl;
 
         // 在 DLL 和 EXE 内部分别执行
         std::cout << std::endl << "Size of OCRResult: " << sizeof(OCRResult) << std::endl;
         std::cout << "Offset of num_images: " << offsetof(OCRResult, num_images) << std::endl;
-        // 也可以逐字节打印 OCRResult 的内存内容
-        unsigned char* raw_data = reinterpret_cast<unsigned char*>(result);
-        for (size_t i = 0; i < sizeof(OCRResult); ++i) {
-            std::cout << std::hex << (int)raw_data[i] << " ";
-        }
+        
+        unsigned char* raw_data = reinterpret_cast<unsigned char*>(result);    // 也可以逐字节打印 OCRResult 的内存内容
+        for (size_t i = 0; i < sizeof(OCRResult); ++i) std::cout << std::hex << (int)raw_data[i] << " ";
         std::cout << std::endl;
 
-
-        // 打印 OCRResult 中的所有内容
-        std::cout << result  << "  OCRResult contains " << result->num_images << " images:\n";
-
-
-
+#if 0
+        // 额外的打印信息
         for (int i = 0; i < result->num_images; ++i) {
             std::cout << "Image " << i << "  result->path: " << result->path[i] << " OCR Results:" << std::endl;
 
@@ -147,6 +138,8 @@ extern "C" {
             }
         }
 
+#endif
+
         return result;
     }
 
@@ -158,21 +151,26 @@ extern "C" {
             // 清空所有 vectors 以释放内存
             for (int i = 0; i < result->num_images; ++i)
             {
-                result->boxes[i].clear();  // 清空每个图片的 box 数据
+                // Clear nested vectors for each image
+                for (auto& boxVec : result->boxes[i])
+                    boxVec.clear(); // Clear inner vectors
+                result->boxes[i].clear();  // Clear outer vector
+
                 result->text_results[i].clear();  // 清空每个图片的文本识别结果
                 result->rec_scores[i].clear();  // 清空每个图片的识别分数
                 result->cls_labels[i].clear();  // 清空每个图片的分类标签
                 result->cls_scores[i].clear();  // 清空每个图片的分类分数
             }
 
-            // 清空整体 vectors
+            // Clear overall vectors
             result->boxes.clear();
             result->text_results.clear();
             result->rec_scores.clear();
             result->cls_labels.clear();
             result->cls_scores.clear();
+            result->path.clear(); // Clear the path vector
 
-            // 删除 OCRResult 对象本身
+            // Delete the OCRResult object itself
             delete result;
         }
     }
