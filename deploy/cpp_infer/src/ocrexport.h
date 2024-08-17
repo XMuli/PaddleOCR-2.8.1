@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,6 +24,7 @@ struct OCRResult
 
 __declspec(dllexport) int add(int a, int b);
 __declspec(dllexport) OCRResult* ImageProcess(const char* image_dir);
+__declspec(dllexport) const char* ImageProcess2(const char* image_dir);
 __declspec(dllexport) void FreeOCRResult(OCRResult* result);
 
 
