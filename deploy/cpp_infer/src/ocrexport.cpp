@@ -13,7 +13,7 @@
 #include <include/paddlestructure.h>
 
 using namespace PaddleOCR;
-#include "json.hpp"
+#include "include/json.hpp"
 using ordered_json = nlohmann::ordered_json;
 
 extern "C" {
@@ -24,154 +24,45 @@ extern "C" {
         return a + b;
     }
 
-    __declspec(dllexport) OCRResult* ImageProcess(const char* image_dir)
+    __declspec(dllexport) const char* ImageOcrProcess(const char* image_dir, const bool bSingular)
     {
-        std::vector<cv::String> cv_all_img_names;
-        cv::glob(image_dir, cv_all_img_names);
-        std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
-
-        if (cv_all_img_names.empty())
-        {
-            std::cerr << "[ERROR] No images found in the directory: " << image_dir << std::endl;
-            return nullptr;
-        }
-
         PPOCR ocr;
         std::vector<cv::Mat> img_list;
         std::vector<cv::String> img_names;
 
-        for (int i = 0; i < cv_all_img_names.size(); ++i)
+        if (bSingular)
         {
-            cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-            if (!img.data)
-            {
-                std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
-                continue;
+            cv::Mat img = cv::imread(image_dir, cv::IMREAD_COLOR);
+            if (!img.data) {
+                std::cerr << "[ERROR] Image read failed! Image path: " << image_dir << std::endl;
+                return "";
             }
             img_list.push_back(img);
-            img_names.push_back(cv_all_img_names[i]);
+            img_names.push_back(image_dir);
         }
-
-        std::vector<std::vector<OCRPredictResult>> ocr_results = ocr.ocr(img_list, true, true, false);
-
-        //for (int i = 0; i < img_names.size(); ++i)
-        //{
-        //    std::cout << "Predict img: " << img_names[i] << std::endl;
-        //    Utility::print_result(ocr_results[i]);
-        //}
-
-        OCRResult* result = new OCRResult;
-        result->num_images = ocr_results.size();
-        
-        result->boxes.resize(result->num_images);
-        result->path.resize(result->num_images);
-        result->text_results.resize(result->num_images);
-        result->rec_scores.resize(result->num_images);
-        result->cls_labels.resize(result->num_images);
-        result->cls_scores.resize(result->num_images);
-        result->path = img_names;
-
-
-
-        for (size_t i = 0; i < ocr_results.size(); ++i)
+        else
         {
-            result->boxes[i].resize(ocr_results[i].size());
-            result->text_results[i].resize(ocr_results[i].size());
-            result->rec_scores[i].resize(ocr_results[i].size());
-            result->cls_labels[i].resize(ocr_results[i].size());
-            result->cls_scores[i].resize(ocr_results[i].size());
+            std::vector<cv::String> cv_all_img_names;
+            cv::glob(image_dir, cv_all_img_names);
+            std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
 
-
-            for (size_t j = 0; j < ocr_results[i].size(); ++j)
+            if (cv_all_img_names.empty())
             {
-                result->boxes[i][j].resize(ocr_results[i][j].box.size());
-                result->boxes[i][j] = ocr_results[i][j].box;
-                
-
-                result->text_results[i][j] = ocr_results[i][j].text;
-                result->rec_scores[i][j] = ocr_results[i][j].score;
-                result->cls_labels[i][j] = ocr_results[i][j].cls_label;
-                result->cls_scores[i][j] = ocr_results[i][j].cls_score;
+                std::cerr << "[ERROR] No images found in the directory: " << image_dir << std::endl;
+                return "";
             }
-        }
 
-        std::cout << "-------------DLL---------->" << std::endl
-        << "result: " << result  << "  result->num_images: " << result->num_images << "  img_names.size():" << img_names.size() << std::endl;
-        for (int i = 0; i < result->path.size(); ++i) std::cout << "result->path: " << result->path[i] << std::endl;
-
-        // 在 DLL 和 EXE 内部分别执行
-        std::cout << std::endl << "Size of OCRResult: " << sizeof(OCRResult) << std::endl;
-        std::cout << "Offset of num_images: " << offsetof(OCRResult, num_images) << std::endl;
-        
-        unsigned char* raw_data = reinterpret_cast<unsigned char*>(result);    // 也可以逐字节打印 OCRResult 的内存内容
-        for (size_t i = 0; i < sizeof(OCRResult); ++i) std::cout << std::hex << (int)raw_data[i] << " ";
-        std::cout << std::endl;
-
-#if 0
-        // 额外的打印信息
-        for (int i = 0; i < result->num_images; ++i) {
-            std::cout << "Image " << i << "  result->path: " << result->path[i] << " OCR Results:" << std::endl;
-
-            // 打印识别的文本结果和对应的识别分数
-            for (size_t j = 0; j < result->text_results[i].size(); ++j) {
-                std::cout << "\tText: " << result->text_results[i][j] << std::endl;
-                std::cout << "\tRecognition Score: " << result->rec_scores[i][j] << std::endl;
-            }
-        }
-
-        for (int i = 0; i < result->num_images; ++i)
-        {
-            std::cout << "Image " << i << " OCR Results:\n";
-            for (size_t j = 0; j < result->boxes[i].size(); ++j)
+            for (int i = 0; i < cv_all_img_names.size(); ++i)
             {
-                std::cout << "\tdet boxes: [";
-                for (const auto& point : result->boxes[i][j])
+                cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
+                if (!img.data)
                 {
-                    std::cout << "[" << point[0] << "," << point[1] << "],";
+                    std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
+                    continue;
                 }
-                std::cout << "]\n";
-                std::cout << "\trec text: " << result->text_results[i][j] << "\n";
-                std::cout << "\trec score: " << result->rec_scores[i][j] << "\n";
-                if (result->cls_labels[i][j])
-                {
-                    std::cout << "\tcls label: " << result->cls_labels[i][j] << "\n";
-                    std::cout << "\tcls score: " << result->cls_scores[i][j] << "\n";
-                }
+                img_list.push_back(img);
+                img_names.push_back(cv_all_img_names[i]);
             }
-        }
-
-#endif
-
-        return result;
-    }
-
-    __declspec(dllexport) const char* ImageProcess2(const char* image_dir)
-    {
-        
-        std::vector<cv::String> cv_all_img_names;
-        cv::glob(image_dir, cv_all_img_names);
-        std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
-
-        if (cv_all_img_names.empty())
-        {
-            std::cerr << "[ERROR] No images found in the directory: " << image_dir << std::endl;
-            return "";
-        }
-
-        PPOCR ocr;
-        std::vector<cv::Mat> img_list;
-        std::vector<cv::String> img_names;
-
-        for (int i = 0; i < cv_all_img_names.size(); ++i)
-        {
-            cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-            if (!img.data)
-            {
-                std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
-                continue;
-            }
-            img_list.push_back(img);
-            img_names.push_back(cv_all_img_names[i]);
         }
 
         std::vector<std::vector<OCRPredictResult>> ocr_results = ocr.ocr(img_list, true, true, false);
@@ -213,49 +104,30 @@ extern "C" {
         }
 
         // Return the pointer to the allocated memory
-        std::cout << "--json-------->" << j.dump(4) << std::endl;
-        // Serialize the JSON object to a string
+        //std::cout << "--json-------->" << j.dump(4) << std::endl;
         std::string serialized_json = j.dump();
 
-        // Allocate memory for the C-style string and copy the content
         char* result = new char[serialized_json.size() + 1];
         std::strcpy(result, serialized_json.c_str());
 
+        //// 打印地址
+        //std::cout << "Address of result: " << static_cast<void*>(result) << std::endl;
+        //std::size_t size = std::strlen(result);
+        //std::cout << "Size of result: " << size + 1 << " bytes" << std::endl;  // +1 包括 '\0'
 
+        //// 打印内存内容
+        //std::cout << "Memory content of result: ";
+        //for (std::size_t i = 0; i < size + 1; ++i) {  // +1 包括 '\0'
+        //    std::cout << "\\x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(result[i]));
+        //}
+        //std::cout << std::endl;
 
         return result;
     }
 
-    __declspec(dllexport) void FreeOCRResult(OCRResult* result)
+    __declspec(dllexport) void FreeReturnPtr(const char* p)
     {
-        if (result)
-        {
-            // 清空所有 vectors 以释放内存
-            for (int i = 0; i < result->num_images; ++i)
-            {
-                // Clear nested vectors for each image
-                for (auto& boxVec : result->boxes[i])
-                    boxVec.clear(); // Clear inner vectors
-                result->boxes[i].clear();  // Clear outer vector
-
-                result->text_results[i].clear();  // 清空每个图片的文本识别结果
-                result->rec_scores[i].clear();  // 清空每个图片的识别分数
-                result->cls_labels[i].clear();  // 清空每个图片的分类标签
-                result->cls_scores[i].clear();  // 清空每个图片的分类分数
-            }
-
-            // Clear overall vectors
-            result->boxes.clear();
-            result->text_results.clear();
-            result->rec_scores.clear();
-            result->cls_labels.clear();
-            result->cls_scores.clear();
-            result->path.clear(); // Clear the path vector
-
-            // Delete the OCRResult object itself
-            delete result;
-        }
+        if (!p) delete[] p;
     }
-
 
 }
