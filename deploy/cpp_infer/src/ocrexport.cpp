@@ -27,24 +27,25 @@ extern "C" {
     __declspec(dllexport) const char* ImageOcrProcess(const char* image_dir, const bool bSingular)
     {
         PPOCR ocr;
+
+        if (FLAGS_benchmark)
+        {
+            ocr.reset_timer();
+        }
+
         std::vector<cv::Mat> img_list;
         std::vector<cv::String> img_names;
+        std::vector<cv::String> cv_all_img_names;  // 仅复数时候使用
 
-        if (bSingular)
-        {
-            cv::Mat img = cv::imread(image_dir, cv::IMREAD_COLOR);
-            if (!img.data) {
-                std::cerr << "[ERROR] Image read failed! Image path: " << image_dir << std::endl;
-                return "";
-            }
-            img_list.push_back(img);
-            img_names.push_back(image_dir);
+        if (bSingular) {
+            // 单张图片的情况，添加到 cv_all_img_names
+            cv_all_img_names.push_back(image_dir);
         }
-        else
-        {
-            std::vector<cv::String> cv_all_img_names;
+        else {
+            // 多张图片的情况，使用 glob 获取所有图片路径
             cv::glob(image_dir, cv_all_img_names);
-            std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
+            std::cout << "Total images num: " << cv_all_img_names.size() << std::endl;
+        }
 
             if (cv_all_img_names.empty())
             {
@@ -63,9 +64,27 @@ extern "C" {
                 img_list.push_back(img);
                 img_names.push_back(cv_all_img_names[i]);
             }
-        }
+  
 
         std::vector<std::vector<OCRPredictResult>> ocr_results = ocr.ocr(img_list, true, true, false);
+
+
+        for (int i = 0; i < img_names.size(); ++i)  // 保存输出后的图片
+        {
+            //std::cout << "predict img: " << cv_all_img_names[i] << std::endl;
+            //Utility::print_result(ocr_results[i]);
+            if (FLAGS_visualize && FLAGS_det)
+            {
+                std::string file_name = Utility::basename(img_names[i]);
+                cv::Mat srcimg = img_list[i];
+                Utility::VisualizeBboxes(srcimg, ocr_results[i],
+                    FLAGS_output + "/" + file_name);
+            }
+        }
+        if (FLAGS_benchmark)
+        {
+            ocr.benchmark_log(cv_all_img_names.size());
+        }
 
         ordered_json j;
         j["images"] = ordered_json::array();
