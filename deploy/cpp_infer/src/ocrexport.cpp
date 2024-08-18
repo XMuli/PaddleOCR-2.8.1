@@ -18,6 +18,106 @@ using ordered_json = nlohmann::ordered_json;
 
 extern "C" {
 
+    // 将 ANSI 编码字符串转换为 UTF-8 编码字符串
+    std::string ansiToUtf8(const std::string& ansiStr) {
+        // 获取 ANSI 字符串的宽字符长度
+        int wideCharLen = MultiByteToWideChar(CP_ACP, 0, ansiStr.c_str(), -1, NULL, 0);
+
+        // 分配足够大的宽字符缓冲区
+        std::wstring wideStr(wideCharLen, L'\0');
+
+        // 将 ANSI 字符串转换为宽字符字符串
+        MultiByteToWideChar(CP_ACP, 0, ansiStr.c_str(), -1, &wideStr[0], wideCharLen);
+
+        // 获取 UTF-8 编码字符串的长度
+        int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, NULL, 0, NULL, NULL);
+
+        // 分配足够大的 UTF-8 缓冲区
+        std::string utf8Str(utf8Len, '\0');
+
+        // 将宽字符字符串转换为 UTF-8 编码字符串
+        WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, &utf8Str[0], utf8Len, NULL, NULL);
+
+        return utf8Str;
+    }
+
+    void printMemory(const char* data, size_t size) {
+        std::cout << "Memory content in hexadecimal:";
+        for (size_t i = 0; i < size; ++i) {
+            std::cout << std::hex << std::setw(2) << std::setfill('0') << (static_cast<unsigned int>(data[i]) & 0xFF) << ' ';
+        }
+        std::cout << std::dec << std::endl;  // Reset to decimal
+    }
+
+    void check_params()
+    {
+        if (FLAGS_det)
+        {
+            if (FLAGS_det_model_dir.empty() || FLAGS_image_dir.empty())
+            {
+                std::cout << "Usage[det]: ./ppocr "
+                    "--det_model_dir=/PATH/TO/DET_INFERENCE_MODEL/ "
+                    << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
+                exit(1);
+            }
+        }
+        if (FLAGS_rec)
+        {
+            std::cout
+                << "In PP-OCRv3, rec_image_shape parameter defaults to '3, 48, 320',"
+                "if you are using recognition model with PP-OCRv2 or an older "
+                "version, "
+                "please set --rec_image_shape='3,32,320"
+                << std::endl;
+            if (FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty())
+            {
+                std::cout << "Usage[rec]: ./ppocr "
+                    "--rec_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
+                    << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
+                exit(1);
+            }
+        }
+        if (FLAGS_cls && FLAGS_use_angle_cls)
+        {
+            if (FLAGS_cls_model_dir.empty() || FLAGS_image_dir.empty())
+            {
+                std::cout << "Usage[cls]: ./ppocr "
+                    << "--cls_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
+                    << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
+                exit(1);
+            }
+        }
+        if (FLAGS_table)
+        {
+            if (FLAGS_table_model_dir.empty() || FLAGS_det_model_dir.empty() ||
+                FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty())
+            {
+                std::cout << "Usage[table]: ./ppocr "
+                    << "--det_model_dir=/PATH/TO/DET_INFERENCE_MODEL/ "
+                    << "--rec_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
+                    << "--table_model_dir=/PATH/TO/TABLE_INFERENCE_MODEL/ "
+                    << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
+                exit(1);
+            }
+        }
+        if (FLAGS_layout)
+        {
+            if (FLAGS_layout_model_dir.empty() || FLAGS_image_dir.empty())
+            {
+                std::cout << "Usage[layout]: ./ppocr "
+                    << "--layout_model_dir=/PATH/TO/LAYOUT_INFERENCE_MODEL/ "
+                    << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
+                exit(1);
+            }
+        }
+        if (FLAGS_precision != "fp32" && FLAGS_precision != "fp16" &&
+            FLAGS_precision != "int8")
+        {
+            std::cout << "precison should be 'fp32'(default), 'fp16' or 'int8'. "
+                << std::endl;
+            exit(1);
+        }
+    }
 
     __declspec(dllexport) int add(int a, int b)
     {
@@ -26,9 +126,10 @@ extern "C" {
 
     __declspec(dllexport) const char* ImageOcrProcess(const char* image_dir, const bool bSingular)
     {
+        printMemory(image_dir, std::strlen(image_dir));
         PPOCR ocr;
 
-        if (FLAGS_benchmark)
+        if (FLAGS_benchmark) 
         {
             ocr.reset_timer();
         }
@@ -93,7 +194,19 @@ extern "C" {
         {
             ordered_json image_json;
             image_json["index"] = i + 1;
-            image_json["path"] = img_names[i];
+
+            try { // 将 ANSI 编码字符串转换为 UTF-8 编码字符串
+                std::string utf8Str = ansiToUtf8(img_names[i]); // ordered_json 需要传入 utf8 字符的
+                image_json["path"] = utf8Str;
+            }
+            catch (const std::exception& e) { // 捕捉标准异常并输出错误信息
+                std::cerr << "Exception: " << e.what() << std::endl;
+            }
+            catch (...)  // 捕捉所有其他类型的异常
+            {
+                std::cerr << "Unknown exception occurred." << std::endl;
+            }
+
             image_json["text_results"] = ordered_json::array();
 
             for (size_t j = 0; j < ocr_results[i].size(); ++j)
@@ -143,6 +256,26 @@ extern "C" {
 
         return result;
     }
+
+
+
+    // 定义一个新接口来解析命令行参数
+    //__declspec(dllexport) const char* ImageOcrProcessWithArgs(const bool& bSingular, int argc, char** argv) {
+    //    // 解析命令行参数
+    //    google::ParseCommandLineFlags(&argc, &argv, true);
+
+    //    // 参数检查
+    //    check_params();
+
+    //    // 确保 image_dir 参数存在
+    //    if (!Utility::PathExists(FLAGS_image_dir)) {
+    //        std::cerr << "[ERROR] image path not exist! image_dir: " << FLAGS_image_dir << std::endl;
+    //        return nullptr;
+    //    }
+
+    //    // 调用原有的 OCR 处理函数
+    //    return ImageOcrProcess(FLAGS_image_dir.c_str(), bSingular);
+    //}
 
     __declspec(dllexport) void FreeReturnPtr(const char* p)
     {
