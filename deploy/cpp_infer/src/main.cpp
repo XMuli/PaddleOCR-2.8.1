@@ -23,49 +23,40 @@
 
 using namespace PaddleOCR;
 
-void check_params()
-{
-    if (FLAGS_det)
-    {
-        if (FLAGS_det_model_dir.empty() || FLAGS_image_dir.empty())
-        {
+void check_params() {
+    if (FLAGS_det) {
+        if (FLAGS_det_model_dir.empty() || FLAGS_image_dir.empty()) {
             std::cout << "Usage[det]: ./ppocr "
                 "--det_model_dir=/PATH/TO/DET_INFERENCE_MODEL/ "
                 << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
             exit(1);
         }
     }
-    if (FLAGS_rec)
-    {
+    if (FLAGS_rec) {
         std::cout
             << "In PP-OCRv3, rec_image_shape parameter defaults to '3, 48, 320',"
             "if you are using recognition model with PP-OCRv2 or an older "
             "version, "
             "please set --rec_image_shape='3,32,320"
             << std::endl;
-        if (FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty())
-        {
+        if (FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty()) {
             std::cout << "Usage[rec]: ./ppocr "
                 "--rec_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
                 << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
             exit(1);
         }
     }
-    if (FLAGS_cls && FLAGS_use_angle_cls)
-    {
-        if (FLAGS_cls_model_dir.empty() || FLAGS_image_dir.empty())
-        {
+    if (FLAGS_cls && FLAGS_use_angle_cls) {
+        if (FLAGS_cls_model_dir.empty() || FLAGS_image_dir.empty()) {
             std::cout << "Usage[cls]: ./ppocr "
                 << "--cls_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
                 << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
             exit(1);
         }
     }
-    if (FLAGS_table)
-    {
+    if (FLAGS_table) {
         if (FLAGS_table_model_dir.empty() || FLAGS_det_model_dir.empty() ||
-            FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty())
-        {
+            FLAGS_rec_model_dir.empty() || FLAGS_image_dir.empty()) {
             std::cout << "Usage[table]: ./ppocr "
                 << "--det_model_dir=/PATH/TO/DET_INFERENCE_MODEL/ "
                 << "--rec_model_dir=/PATH/TO/REC_INFERENCE_MODEL/ "
@@ -74,10 +65,8 @@ void check_params()
             exit(1);
         }
     }
-    if (FLAGS_layout)
-    {
-        if (FLAGS_layout_model_dir.empty() || FLAGS_image_dir.empty())
-        {
+    if (FLAGS_layout) {
+        if (FLAGS_layout_model_dir.empty() || FLAGS_image_dir.empty()) {
             std::cout << "Usage[layout]: ./ppocr "
                 << "--layout_model_dir=/PATH/TO/LAYOUT_INFERENCE_MODEL/ "
                 << "--image_dir=/PATH/TO/INPUT/IMAGE/" << std::endl;
@@ -85,30 +74,25 @@ void check_params()
         }
     }
     if (FLAGS_precision != "fp32" && FLAGS_precision != "fp16" &&
-        FLAGS_precision != "int8")
-    {
+        FLAGS_precision != "int8") {
         std::cout << "precison should be 'fp32'(default), 'fp16' or 'int8'. "
             << std::endl;
         exit(1);
     }
 }
 
-void ocr(std::vector<cv::String>& cv_all_img_names)
-{
+void ocr(std::vector<cv::String>& cv_all_img_names) {
     PPOCR ocr;
 
-    if (FLAGS_benchmark)
-    {
+    if (FLAGS_benchmark) {
         ocr.reset_timer();
     }
 
     std::vector<cv::Mat> img_list;
     std::vector<cv::String> img_names;
-    for (int i = 0; i < cv_all_img_names.size(); ++i)
-    {
+    for (int i = 0; i < cv_all_img_names.size(); ++i) {
         cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-        if (!img.data)
-        {
+        if (!img.data) {
             std::cerr << "[ERROR] image read failed! image path: "
                 << cv_all_img_names[i] << std::endl;
             continue;
@@ -120,39 +104,32 @@ void ocr(std::vector<cv::String>& cv_all_img_names)
     std::vector<std::vector<OCRPredictResult>> ocr_results =
         ocr.ocr(img_list, FLAGS_det, FLAGS_rec, FLAGS_cls);
 
-    for (int i = 0; i < img_names.size(); ++i)
-    {
+    for (int i = 0; i < img_names.size(); ++i) {
         std::cout << "predict img: " << cv_all_img_names[i] << std::endl;
         Utility::print_result(ocr_results[i]);
-        if (FLAGS_visualize && FLAGS_det)
-        {
+        if (FLAGS_visualize && FLAGS_det) {
             std::string file_name = Utility::basename(img_names[i]);
             cv::Mat srcimg = img_list[i];
             Utility::VisualizeBboxes(srcimg, ocr_results[i],
-                                     FLAGS_output + "/" + file_name);
+                FLAGS_output + "/" + file_name);
         }
     }
-    if (FLAGS_benchmark)
-    {
+    if (FLAGS_benchmark) {
         ocr.benchmark_log(cv_all_img_names.size());
     }
 }
 
-void structure(std::vector<cv::String>& cv_all_img_names)
-{
+void structure(std::vector<cv::String>& cv_all_img_names) {
     PaddleOCR::PaddleStructure engine;
 
-    if (FLAGS_benchmark)
-    {
+    if (FLAGS_benchmark) {
         engine.reset_timer();
     }
 
-    for (int i = 0; i < cv_all_img_names.size(); i++)
-    {
+    for (int i = 0; i < cv_all_img_names.size(); i++) {
         std::cout << "predict img: " << cv_all_img_names[i] << std::endl;
         cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-        if (!img.data)
-        {
+        if (!img.data) {
             std::cerr << "[ERROR] image read failed! image path: "
                 << cv_all_img_names[i] << std::endl;
             continue;
@@ -161,8 +138,7 @@ void structure(std::vector<cv::String>& cv_all_img_names)
         std::vector<StructurePredictResult> structure_results = engine.structure(
             img, FLAGS_layout, FLAGS_table, FLAGS_det && FLAGS_rec);
 
-        for (int j = 0; j < structure_results.size(); j++)
-        {
+        for (int j = 0; j < structure_results.size(); j++) {
             std::cout << j << "\ttype: " << structure_results[j].type
                 << ", region: [";
             std::cout << structure_results[j].box[0] << ","
@@ -171,24 +147,20 @@ void structure(std::vector<cv::String>& cv_all_img_names)
                 << structure_results[j].box[3] << "], score: ";
             std::cout << structure_results[j].confidence << ", res: ";
 
-            if (structure_results[j].type == "table")
-            {
+            if (structure_results[j].type == "table") {
                 std::cout << structure_results[j].html << std::endl;
-                if (structure_results[j].cell_box.size() > 0 && FLAGS_visualize)
-                {
+                if (structure_results[j].cell_box.size() > 0 && FLAGS_visualize) {
                     std::string file_name = Utility::basename(cv_all_img_names[i]);
 
                     Utility::VisualizeBboxes(img, structure_results[j],
-                                             FLAGS_output + "/" + std::to_string(j) +
-                                             "_" + file_name);
+                        FLAGS_output + "/" + std::to_string(j) +
+                        "_" + file_name);
                 }
             }
-            else
-            {
+            else {
                 std::cout << "count of ocr result is : "
                     << structure_results[j].text_res.size() << std::endl;
-                if (structure_results[j].text_res.size() > 0)
-                {
+                if (structure_results[j].text_res.size() > 0) {
                     std::cout << "********** print ocr result "
                         << "**********" << std::endl;
                     Utility::print_result(structure_results[j].text_res);
@@ -198,20 +170,17 @@ void structure(std::vector<cv::String>& cv_all_img_names)
             }
         }
     }
-    if (FLAGS_benchmark)
-    {
+    if (FLAGS_benchmark) {
         engine.benchmark_log(cv_all_img_names.size());
     }
 }
 
-int main(int argc, char** argv)
-{
-     //Parsing command-line
+int main(int argc, char** argv) {
+    // Parsing command-line
     google::ParseCommandLineFlags(&argc, &argv, true);
     check_params();
 
-    if (!Utility::PathExists(FLAGS_image_dir))
-    {
+    if (!Utility::PathExists(FLAGS_image_dir)) {
         std::cerr << "[ERROR] image path not exist! image_dir: " << FLAGS_image_dir
             << std::endl;
         exit(1);
@@ -221,20 +190,16 @@ int main(int argc, char** argv)
     cv::glob(FLAGS_image_dir, cv_all_img_names);
     std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
 
-    if (!Utility::PathExists(FLAGS_output))
-    {
+    if (!Utility::PathExists(FLAGS_output)) {
         Utility::CreateDir(FLAGS_output);
     }
-    if (FLAGS_type == "ocr")
-    {
+    if (FLAGS_type == "ocr") {
         ocr(cv_all_img_names);
     }
-    else if (FLAGS_type == "structure")
-    {
+    else if (FLAGS_type == "structure") {
         structure(cv_all_img_names);
     }
-    else
-    {
+    else {
         std::cout << "only value in ['ocr','structure'] is supported" << std::endl;
     }
 }

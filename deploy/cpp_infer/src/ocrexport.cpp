@@ -259,23 +259,43 @@ extern "C" {
 
 
 
+#include <iostream>
+#include <cstring>  // For std::strlen
+
+    void printMemory2(const char* data, size_t size) {
+        std::cout << "Memory content in hexadecimal:" << std::endl;
+
+        // Iterate over each byte in the data
+        for (size_t i = 0; i < size; ++i) {
+            // Print each byte in hexadecimal format with leading zeros and a space
+            std::cout << std::hex << std::setw(2) << std::setfill('0')
+                << static_cast<int>(static_cast<unsigned char>(data[i])) << " ";
+        }
+
+        std::cout << std::endl;  // Final newline
+    }
+
     // 定义一个新接口来解析命令行参数
-    //__declspec(dllexport) const char* ImageOcrProcessWithArgs(const bool& bSingular, int argc, char** argv) {
-    //    // 解析命令行参数
-    //    google::ParseCommandLineFlags(&argc, &argv, true);
+    __declspec(dllexport) const char* ImageOcrProcessWithArgs(const bool& bSingular, int argc, char** argv) {
 
-    //    // 参数检查
-    //    check_params();
+        google::ParseCommandLineFlags(&argc, &argv, true);
+        check_params();
 
-    //    // 确保 image_dir 参数存在
-    //    if (!Utility::PathExists(FLAGS_image_dir)) {
-    //        std::cerr << "[ERROR] image path not exist! image_dir: " << FLAGS_image_dir << std::endl;
-    //        return nullptr;
-    //    }
+        if (!Utility::PathExists(FLAGS_image_dir))
+        {
+            std::cerr << "[ERROR] image path not exist! image_dir: " << FLAGS_image_dir
+                << std::endl;
+            exit(1);
+        }
 
-    //    // 调用原有的 OCR 处理函数
-    //    return ImageOcrProcess(FLAGS_image_dir.c_str(), bSingular);
-    //}
+        if (!Utility::PathExists(FLAGS_output))
+        {
+            Utility::CreateDir(FLAGS_output);
+        }
+
+        // 调用原有的 OCR 处理函数
+        return ImageOcrProcess(FLAGS_image_dir.c_str(), bSingular);
+    }
 
     __declspec(dllexport) void FreeReturnPtr(const char* p)
     {
