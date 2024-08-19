@@ -90,6 +90,7 @@ void ocr(std::vector<cv::String>& cv_all_img_names) {
 
     std::vector<cv::Mat> img_list;
     std::vector<cv::String> img_names;
+
     for (int i = 0; i < cv_all_img_names.size(); ++i) {
         cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
         if (!img.data) {
@@ -189,6 +190,7 @@ int main(int argc, char** argv) {
     std::vector<cv::String> cv_all_img_names;
     cv::glob(FLAGS_image_dir, cv_all_img_names);
     std::cout << "total images num: " << cv_all_img_names.size() << std::endl;
+
 
     if (!Utility::PathExists(FLAGS_output)) {
         Utility::CreateDir(FLAGS_output);

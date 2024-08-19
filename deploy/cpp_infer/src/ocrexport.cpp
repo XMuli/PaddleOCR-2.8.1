@@ -124,7 +124,7 @@ extern "C" {
         return a + b;
     }
 
-    __declspec(dllexport) const char* ImageOcrProcess(const char* image_dir, const bool bSingular)
+    __declspec(dllexport) const char* ImageOcrProcess(const char* image_dir)
     {
         printMemory(image_dir, std::strlen(image_dir));
         PPOCR ocr;
@@ -138,33 +138,28 @@ extern "C" {
         std::vector<cv::String> img_names;
         std::vector<cv::String> cv_all_img_names;  // 仅复数时候使用
 
-        if (bSingular) {
-            // 单张图片的情况，添加到 cv_all_img_names
-            cv_all_img_names.push_back(image_dir);
-        }
-        else {
-            // 多张图片的情况，使用 glob 获取所有图片路径
-            cv::glob(image_dir, cv_all_img_names);
-            std::cout << "Total images num: " << cv_all_img_names.size() << std::endl;
+        cv::glob(image_dir, cv_all_img_names);   // 自动判断是单个图片还是一个路径; 且支持复杂的
+        std::cout << "Total images num: " << cv_all_img_names.size() << std::endl;
+        std::cout << "---------------------:" << cv_all_img_names.size() << " image_dir:" << image_dir << std::endl;
+        for (size_t i = 0; i < cv_all_img_names.size(); ++i) std::cout << "Image " << i + 1 << ": " << cv_all_img_names[i] << std::endl;
+
+        if (cv_all_img_names.empty())
+        {
+            std::cerr << "[ERROR] No images found in the directory: " << image_dir << std::endl;
+            return "";
         }
 
-            if (cv_all_img_names.empty())
+        for (int i = 0; i < cv_all_img_names.size(); ++i)
+        {
+            cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
+            if (!img.data)
             {
-                std::cerr << "[ERROR] No images found in the directory: " << image_dir << std::endl;
-                return "";
+                std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
+                continue;
             }
-
-            for (int i = 0; i < cv_all_img_names.size(); ++i)
-            {
-                cv::Mat img = cv::imread(cv_all_img_names[i], cv::IMREAD_COLOR);
-                if (!img.data)
-                {
-                    std::cerr << "[ERROR] image read failed! image path: " << cv_all_img_names[i] << std::endl;
-                    continue;
-                }
-                img_list.push_back(img);
-                img_names.push_back(cv_all_img_names[i]);
-            }
+            img_list.push_back(img);
+            img_names.push_back(cv_all_img_names[i]);
+        }
   
 
         std::vector<std::vector<OCRPredictResult>> ocr_results = ocr.ocr(img_list, true, true, false);
@@ -276,7 +271,7 @@ extern "C" {
     }
 
     // 定义一个新接口来解析命令行参数
-    __declspec(dllexport) const char* ImageOcrProcessWithArgs(const bool& bSingular, int argc, char** argv) {
+    __declspec(dllexport) const char* ImageOcrProcessWithArgs(int argc, char** argv) {
 
         google::ParseCommandLineFlags(&argc, &argv, true);
         check_params();
@@ -294,7 +289,7 @@ extern "C" {
         }
 
         // 调用原有的 OCR 处理函数
-        return ImageOcrProcess(FLAGS_image_dir.c_str(), bSingular);
+        return ImageOcrProcess(FLAGS_image_dir.c_str());
     }
 
     __declspec(dllexport) void FreeReturnPtr(const char* p)
